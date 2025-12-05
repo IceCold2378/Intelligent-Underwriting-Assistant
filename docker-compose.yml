@@ -5,9 +5,9 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # This line mounts your local code into the container
-      # Any change you make to main.py is instantly live!
-      - ./backend:/app 
+      - ./backend:/app
+    environment:
+      - OLLAMA_HOST=http://host.docker.internal:11434
 
   frontend:
     build: ./frontend

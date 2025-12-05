@@ -40,8 +40,10 @@ def create_vector_db(file_path):
     # 3. Create embeddings
     # This uses Ollama (running Mistral locally) to turn
     # the text chunks into numerical vectors.
+    ollama_url = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+    print(f"Connecting to Ollama at: {ollama_url}")
     print("Creating embeddings...")
-    embeddings = OllamaEmbeddings(model="mistral")
+    embeddings = OllamaEmbeddings(model="mistral",base_url=ollama_url)
 
     # 4. Create the vector database (ChromaDB)
     # This stores the vectors and allows for fast similarity search.
@@ -85,7 +87,8 @@ def create_rag_chain(retriever):
     
     # 1. Define the LLM
     # We are using the Mistral model we downloaded via Ollama.
-    llm = OllamaLLM(model="mistral")
+    ollama_url = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+    llm = OllamaLLM(model="mistral",base_url=ollama_url)
 
     # 2. Define the Prompt Template
     # This is the *most important part* for getting good results.
