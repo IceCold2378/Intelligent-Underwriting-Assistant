@@ -1,0 +1,20 @@
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # This line mounts your local code into the container
+      # Any change you make to main.py is instantly live!
+      - ./backend:/app 
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      # This tells the frontend to wait until the backend has started
+      - backend

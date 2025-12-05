@@ -1,0 +1,14 @@
+# Internal Underwriting Guidelines
+
+## Loan Eligibility
+- The minimum acceptable credit score is 680.
+- The applicant must be at least 18 years old.
+- The applicant must be a resident of the United States.
+
+## Financial Ratios
+- The debt-to-income (DTI) ratio must not exceed 40%.
+- The loan-to-value (LTV) ratio for a mortgage must not exceed 80%, meaning a down payment of at least 20% is required.
+
+## Risk Flags
+- Any applicant with a previous bankruptcy must be flagged for manual review.
+- The loan amount requested should not exceed $500,000 for a first-time home buyer.
