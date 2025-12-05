@@ -6,7 +6,7 @@ A full-stack AI application that leverages Large Language Models to automate the
 
 ## 🎥 Project Demo
 
-*(This is where you will embed your GIF after the next step!)*
+*Please find attached a small clip of how the intelligenct underwriting assistant works.*
 ![Project Demo GIF](demo.gif) 
 
 ---
