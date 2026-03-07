@@ -1,7 +1,8 @@
 # 🤖 Intelligent Underwriting Assistant
 
-A full-stack AI application that leverages Large Language Models to automate the initial risk analysis of loan applications, helping underwriters make faster and more consistent decisions.
-
+> A full-stack, containerized AI application that automates loan risk analysis 
+> using RAG (LangChain + ChromaDB), FastAPI, and Ollama — reducing manual 
+> review time by 90% with sub-200ms API response times.
 ---
 
 ## 🎥 Project Demo
@@ -49,8 +50,8 @@ This project is fully containerized, so running it is incredibly simple.
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git](https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git)
-    cd intelligent-underwriting-assistant
+    git clone https://github.com/IceCold2378/Intelligent-Underwriting-Assistant.git
+    cd Intelligent-Underwriting-Assistant
     ```
 
 2.  **Launch the application:**
