@@ -1,20 +1,13 @@
-# 1. Use an official Python runtime as a parent image
-FROM python:3.11-slim
+FROM node:20-alpine
 
-# 2. Set the working directory inside the container
 WORKDIR /app
 
-# 3. Copy the requirements file into the container
-COPY requirements.txt .
+COPY package.json .
 
-# 4. Install the Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN npm install
 
-# 5. Copy the app code into the container
 COPY . .
 
-# 6. Expose the port Streamlit runs on
-EXPOSE 8501
+EXPOSE 5173
 
-# 7. The command to run when the container starts
-CMD ["streamlit", "run", "app.py", "--server.port", "8501", "--server.address", "0.0.0.0"]
+CMD ["npm", "run", "dev"]
