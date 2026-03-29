@@ -1,5 +1,23 @@
-
 services:
+  # ── PostgreSQL Database ──
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: underwriting
+      POSTGRES_PASSWORD: underwriting_secret
+      POSTGRES_DB: underwriting
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U underwriting" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Backend API ──
   backend:
     build: ./backend
     ports:
@@ -7,14 +25,33 @@ services:
     volumes:
       - ./backend:/app
     environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - SECRET_KEY=dev-secret-change-in-production
+      - DATABASE_URL=sqlite+aiosqlite:///./underwriting.db
+      # Uncomment below for PostgreSQL:
+      # - DATABASE_URL=postgresql+asyncpg://underwriting:underwriting_secret@db:5432/underwriting
       - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_MODEL=mistral
+      - LLM_PROVIDER=ollama
+      - CHROMA_PERSIST_DIR=./chroma_db
+      - CORS_ORIGINS=["http://localhost:5173","http://localhost:8501","http://localhost:3000"]
+    depends_on:
+      db:
+        condition: service_healthy
 
+  # ── Frontend ──
   frontend:
     build: ./frontend
     ports:
-      - "8501:8501"
+      - "5173:5173"
     volumes:
       - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000/api/v1
     depends_on:
-      # This tells the frontend to wait until the backend has started
       - backend
+
+volumes:
+  pgdata:
