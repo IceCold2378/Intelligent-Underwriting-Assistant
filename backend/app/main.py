@@ -119,11 +119,19 @@ app.add_middleware(
 app.add_middleware(RequestLoggingMiddleware)
 
 
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
+from app.middleware.rate_limit import get_limiter
+
 # ── Exception Handlers ─────────────────────────────────────────────
 
 app.add_exception_handler(AppException, app_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
+# ── Rate Limiting ──────────────────────────────────────────────────
+
+app.state.limiter = get_limiter()
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ── Routers ────────────────────────────────────────────────────────
 

@@ -17,6 +17,18 @@ services:
       timeout: 3s
       retries: 5
 
+  # ── Redis Cache & Rate Limiting ──
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   # ── Backend API ──
   backend:
     build: ./backend
@@ -28,9 +40,9 @@ services:
       - ENVIRONMENT=development
       - DEBUG=true
       - SECRET_KEY=dev-secret-change-in-production
-      - DATABASE_URL=sqlite+aiosqlite:///./underwriting.db
-      # Uncomment below for PostgreSQL:
-      # - DATABASE_URL=postgresql+asyncpg://underwriting:underwriting_secret@db:5432/underwriting
+      # - DATABASE_URL=sqlite+aiosqlite:///./underwriting.db
+      - DATABASE_URL=postgresql+asyncpg://underwriting:underwriting_secret@db:5432/underwriting
+      - REDIS_URL=redis://redis:6379/0
       - OLLAMA_HOST=http://host.docker.internal:11434
       - OLLAMA_MODEL=mistral
       - LLM_PROVIDER=ollama
@@ -38,6 +50,8 @@ services:
       - CORS_ORIGINS=["http://localhost:5173","http://localhost:8501","http://localhost:3000"]
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   # ── Frontend ──

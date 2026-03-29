@@ -82,8 +82,9 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE_MB: int = 25
     ALLOWED_EXTENSIONS: list[str] = ["pdf", "docx", "txt"]
 
-    # --- Rate Limiting ---
+    # --- Rate Limiting & Caching ---
     RATE_LIMIT_PER_MINUTE: int = 30
+    REDIS_URL: str = "redis://localhost:6379/0"
 
     # --- Integrations: Salesforce ---
     SF_USERNAME: str = ""

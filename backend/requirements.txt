@@ -15,7 +15,11 @@ PyJWT==2.10.1
 sqlalchemy==2.0.44
 aiosqlite==0.21.0
 alembic==1.14.0
-# asyncpg==0.30.0  # Uncomment for PostgreSQL
+asyncpg==0.30.0
+
+# Rate Limiting & Caching
+redis==5.2.1
+slowapi==0.1.9
 
 # AI / LLM — Core
 langchain==1.0.3

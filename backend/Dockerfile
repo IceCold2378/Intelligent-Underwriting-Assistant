@@ -1,20 +1,45 @@
-# 1. Use an official Python runtime as a parent image
+# ── Stage 1: Build & Dependencies ──
+FROM python:3.11-slim as builder
+
+# Set standard environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
+
+WORKDIR /build
+
+# Create a virtual environment and install dependencies
+RUN python -m venv /opt/venv
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+
+# ── Stage 2: Production Image ──
 FROM python:3.11-slim
 
-# 2. Set the working directory inside the container
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    PYTHONPATH="/app"
+
 WORKDIR /app
 
-# 3. Copy the requirements file into the container
-COPY requirements.txt .
+# Create a non-root user and group
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# 4. Install the Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy python dependencies from builder
+COPY --from=builder /opt/venv /opt/venv
 
-# 5. Copy all the local code into the container
-COPY . .
+# Copy local source code and ensure permissions
+COPY --chown=appuser:appuser . .
 
-# 6. Expose the port the app runs on
+# Secure the chroma_db and data directories if they exist
+RUN mkdir -p chroma_db data && chown -R appuser:appuser chroma_db data
+
+USER appuser
+
 EXPOSE 8000
 
-# 7. Run the new app module entry point
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Alembic migrations run automatically on startup then uvicorn starts
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4"]
