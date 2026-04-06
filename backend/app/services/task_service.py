@@ -101,7 +101,9 @@ async def update_task_progress(
     if trace:
         task.agent_trace_json = trace
         data["trace"] = trace
-        event_type = "agent_step"
+        # Only use 'agent_step' event for intermediate updates
+        if status == TaskStatus.RUNNING:
+            event_type = "agent_step"
         
     if error:
         task.error = error
@@ -137,15 +139,28 @@ async def run_analysis_task(
         # PENDING -> RUNNING
         await update_task_progress(db, task_id, TaskStatus.RUNNING, 10.0)
         
-        # In a real streaming scenario, we'd pass a callback to the agent
-        # For now, we simulate intermediate steps and then run the agent
-        # This gives the UI a chance to render the streaming connection before the heavy LLM call
+        # Start the heavy LLM agent analysis as a background future
+        analysis_future = asyncio.ensure_future(analysis_func(text, filename))
         
-        await update_task_progress(db, task_id, TaskStatus.RUNNING, 20.0, 
+        # Simulated progress loop while the agent is crunching
+        # This keeps the SSE connection active and the UI moving so it doesn't look "stuck"
+        progress = 20.0
+        
+        await update_task_progress(db, task_id, TaskStatus.RUNNING, progress, 
             trace={"step": "extract_facts", "status": "running"})
             
-        # Normally this would be a streamed LangGraph response
-        result, trace = await analysis_func(text, filename)
+        while not analysis_future.done():
+            # Advance progress asymptotically towards 90%
+            if progress < 90.0:
+                progress += (90.0 - progress) * 0.15
+                await update_task_progress(
+                    db, task_id, TaskStatus.RUNNING, progress, 
+                    trace={"step": "llm_analyze", "status": "running"}
+                )
+            await asyncio.sleep(3.0)
+            
+        # Extract the resolved result and trace
+        result, trace = analysis_future.result()
         
         # COMPLETE
         await update_task_progress(

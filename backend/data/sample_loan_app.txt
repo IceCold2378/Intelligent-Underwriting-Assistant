@@ -1,0 +1,26 @@
+LOAN APPLICATION - CONFIDENTIAL
+APPLICANT: John Doe
+DATE: 2026-03-30
+
+ASSETS:
+- Checking: $12,000
+- Savings: $45,000
+- Real Estate: $350,000
+
+INCOME:
+- Salary: $85,000 / year
+- Bonus: $10,000 / year
+
+LIABILITIES:
+- Credit Card Debt: $5,000
+- Existing Mortgage: $280,000
+
+LOAN REQUEST:
+- Amount: $50,000
+- Purpose: Home Improvement
+- Term: 60 months
+
+ADDITIONAL NOTES:
+- Credit Score: 720 (Self-reported)
+- Bankruptcy: No history of bankruptcy.
+- Employment: Full-time for 5 years at Tech Solutions Inc.

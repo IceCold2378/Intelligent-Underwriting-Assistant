@@ -24,7 +24,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         request.state.request_id = request_id
 
         logger.info(
-            "[%s] → %s %s",
+            "[%s] >> %s %s",
             request_id, request.method, request.url.path,
         )
 
@@ -32,13 +32,13 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             response: Response = await call_next(request)
         except Exception:
             elapsed_ms = round((time.time() - start) * 1000, 1)
-            logger.exception("[%s] ✖ %s %s — unhandled error after %dms",
+            logger.exception("[%s] ERROR %s %s -- unhandled error after %dms",
                              request_id, request.method, request.url.path, elapsed_ms)
             raise
 
         elapsed_ms = round((time.time() - start) * 1000, 1)
         logger.info(
-            "[%s] ← %s %s — %d (%dms)",
+            "[%s] << %s %s -- %d (%dms)",
             request_id, request.method, request.url.path,
             response.status_code, elapsed_ms,
         )

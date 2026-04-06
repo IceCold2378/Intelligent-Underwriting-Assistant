@@ -3,6 +3,8 @@ AI analysis service: LLM orchestration with agentic pipeline.
 
 This service now delegates to the LangGraph agent for multi-step
 analysis, while keeping the RAG chain as a fallback.
+
+Compatible with LangChain v1.0+ (uses LCEL — no langchain.chains).
 """
 
 import json
@@ -10,10 +12,9 @@ import time
 import logging
 from typing import Any
 
-from langchain_ollama import OllamaLLM
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_classic.chains.combine_documents import create_stuff_documents_chain
-from langchain_classic.chains.retrieval import create_retrieval_chain
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
 from app.config import get_settings, LLMProvider
 from app.models.schemas import AnalysisResult, RiskFlag, RiskLevel
@@ -75,7 +76,7 @@ def _get_llm():
             from langchain_openai import ChatOpenAI
             logger.info("Using OpenAI provider: model=%s", settings.OPENAI_MODEL)
             return ChatOpenAI(
-                openai_api_key=settings.OPENAI_API_KEY,
+                api_key=settings.OPENAI_API_KEY,
                 model=settings.OPENAI_MODEL,
                 temperature=0.1,
             )
@@ -109,8 +110,28 @@ def _get_llm():
         except ImportError:
             logger.warning("langchain-anthropic not installed, falling back to Ollama")
 
+    elif provider == LLMProvider.OPENROUTER:
+        try:
+            from langchain_openai import ChatOpenAI
+            model_name = settings.OPENROUTER_MODEL or "google/gemini-2.0-flash-001"
+            logger.info("Using OpenRouter provider: model=%s", model_name)
+            return ChatOpenAI(
+                api_key=settings.OPENROUTER_API_KEY,
+                base_url=settings.OPENROUTER_BASE_URL,
+                model=model_name,
+                temperature=0.1,
+                max_tokens=2048,
+                default_headers={
+                    "HTTP-Referer": "https://underwriting-assistant.app",
+                    "X-Title": settings.APP_NAME,
+                },
+            )
+        except Exception as e:
+            logger.warning("OpenRouter LLM initialization failed (%s), falling back to Ollama", e)
+
     # Default: Ollama
     logger.info("Using Ollama provider: model=%s, host=%s", settings.OLLAMA_MODEL, settings.OLLAMA_HOST)
+    from langchain_ollama import OllamaLLM
     return OllamaLLM(
         model=settings.OLLAMA_MODEL,
         base_url=settings.OLLAMA_HOST,
@@ -118,8 +139,16 @@ def _get_llm():
     )
 
 
+def _format_docs(docs) -> str:
+    """Concatenate retrieved document chunks into a single context string."""
+    return "\n\n".join(doc.page_content for doc in docs)
+
+
 def build_rag_chain(retriever):
-    """Build the RAG chain with structured output prompt."""
+    """
+    Build the RAG chain using LCEL (LangChain Expression Language).
+    Compatible with LangChain v1.0+ (no langchain.chains dependency).
+    """
     global _rag_chain
 
     llm = _get_llm()
@@ -127,8 +156,16 @@ def build_rag_chain(retriever):
         ("system", SYSTEM_PROMPT)
     ])
 
-    question_answer_chain = create_stuff_documents_chain(llm, prompt)
-    _rag_chain = create_retrieval_chain(retriever, question_answer_chain)
+    # LCEL pipeline: retrieve → format docs → prompt → llm → parse string
+    _rag_chain = (
+        {
+            "context": retriever | RunnableLambda(_format_docs),
+            "input": RunnablePassthrough(),
+        }
+        | prompt
+        | llm
+        | StrOutputParser()
+    )
 
     model_name = _get_active_model_name()
     logger.info("RAG chain built successfully (provider=%s, model=%s)",
@@ -152,6 +189,8 @@ def _get_active_model_name() -> str:
         return settings.AZURE_OPENAI_DEPLOYMENT
     elif provider == LLMProvider.ANTHROPIC:
         return settings.ANTHROPIC_MODEL
+    elif provider == LLMProvider.OPENROUTER:
+        return settings.OPENROUTER_MODEL
     return settings.OLLAMA_MODEL
 
 
@@ -250,8 +289,8 @@ async def analyze_document(application_text: str, filename: str = "unknown") -> 
 
     try:
         logger.info("Starting direct RAG analysis (text length=%d chars)...", len(application_text))
-        response = chain.invoke({"input": application_text})
-        raw_answer = response.get("answer", "")
+        # LCEL chain now returns a string directly (StrOutputParser)
+        raw_answer = chain.invoke(application_text)
 
         result = _parse_llm_response(raw_answer)
         result.processing_time_seconds = round(time.time() - start_time, 2)

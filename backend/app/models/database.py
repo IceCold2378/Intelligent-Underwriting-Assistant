@@ -138,11 +138,16 @@ def get_engine():
     if _engine is None:
         settings = get_settings()
         db_url = settings.DATABASE_URL
-        # For SQLite async support
+        
+        # Ensure aiosqlite is used for SQLite async support
         if db_url.startswith("sqlite"):
             if "+aiosqlite" not in db_url:
                 db_url = db_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
-            _engine = create_async_engine(db_url, echo=settings.DEBUG)
+            _engine = create_async_engine(
+                db_url, 
+                echo=settings.DEBUG,
+                connect_args={"check_same_thread": False} if "sqlite" in db_url else {}
+            )
         else:
             # PostgreSQL or other async DB
             if "postgresql://" in db_url and "+asyncpg" not in db_url:
@@ -150,8 +155,6 @@ def get_engine():
             _engine = create_async_engine(
                 db_url,
                 echo=settings.DEBUG,
-                pool_size=10,
-                max_overflow=20,
             )
     return _engine
 

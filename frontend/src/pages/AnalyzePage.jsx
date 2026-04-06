@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { analysis } from '../api';
-import AgentTrace from './AgentTrace.jsx';
+import AgentTrace from '../components/AgentTrace.jsx';
 
 export default function AnalyzePage() {
     const [file, setFile] = useState(null);

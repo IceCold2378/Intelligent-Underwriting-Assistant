@@ -73,8 +73,44 @@ class AgentTrace:
             "steps": [s.to_dict() for s in self.steps],
             "total_duration_ms": round(self.total_duration_ms, 1),
             "iterations": self.iterations,
-            "status": self.final_status.value,
+            "status": self.final_status.value if isinstance(self.final_status, StepStatus) else self.final_status,
         }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> AgentTrace:
+        if not data:
+            return cls()
+        
+        trace = cls()
+        trace.total_duration_ms = data.get("total_duration_ms", 0.0)
+        trace.iterations = data.get("iterations", 0)
+        
+        status_val = data.get("status", StepStatus.PENDING.value)
+        try:
+            trace.final_status = StepStatus(status_val)
+        except ValueError:
+            trace.final_status = StepStatus.PENDING
+            
+        steps = []
+        for s in data.get("steps", []):
+            step = TraceStep(
+                step_number=s.get("step", 0),
+                node_name=s.get("node", ""),
+            )
+            try:
+                step.status = StepStatus(s.get("status", "pending"))
+            except ValueError:
+                step.status = StepStatus.PENDING
+                
+            step.input_summary = s.get("input", "")
+            step.output_summary = s.get("output", "")
+            step.tool_calls = s.get("tool_calls", [])
+            step.duration_ms = s.get("duration_ms", 0.0)
+            step.error = s.get("error")
+            steps.append(step)
+            
+        trace.steps = steps
+        return trace
 
 
 # ── Agent Config ──────────────────────────────────────────────────

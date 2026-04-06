@@ -30,6 +30,22 @@ settings = get_settings()
 router = APIRouter(prefix="/analysis", tags=["Analysis"])
 
 
+def _get_active_llm_model() -> str:
+    """Return the active model name string for the current LLM provider."""
+    from app.config import LLMProvider
+    p = settings.LLM_PROVIDER
+    if p == LLMProvider.OPENAI:
+        return settings.OPENAI_MODEL
+    elif p == LLMProvider.AZURE_OPENAI:
+        return settings.AZURE_OPENAI_DEPLOYMENT
+    elif p == LLMProvider.ANTHROPIC:
+        return settings.ANTHROPIC_MODEL
+    elif p == LLMProvider.OPENROUTER:
+        return settings.OPENROUTER_MODEL
+    return settings.OLLAMA_MODEL
+
+
+
 @router.post("", response_model=AnalysisResponse, status_code=201)
 async def create_analysis(
     request: Request,
@@ -67,7 +83,7 @@ async def create_analysis(
         guidelines_checked=result.guidelines_checked,
         processing_time_seconds=result.processing_time_seconds,
         llm_provider=settings.LLM_PROVIDER.value,
-        llm_model=settings.OLLAMA_MODEL if settings.LLM_PROVIDER.value == "ollama" else settings.OPENAI_MODEL,
+        llm_model=_get_active_llm_model(),
     )
     db.add(record)
     await db.flush()
@@ -114,16 +130,19 @@ async def create_analysis_task(
     filename = file.filename or "unknown"
     application_text = extract_text(filename, contents)
 
-    # We need to wrap the internal analysis to also save the DB record and audit log upon completion
+    # Capture values needed in the background closure before request context closes
+    user_id = current_user.id
+    client_ip = request.client.host if request.client else None
+
     async def wrapped_analysis(text: str, fname: str):
         result = await analyze_document(text, filename=fname)
-        
-        # We need a new session since this is a background task running after request context closes
+
+        # Use a fresh DB session — the request-scoped session is closed by the time this runs
         from app.models.database import get_session_factory
         session_factory = get_session_factory()
         async with session_factory() as bg_db:
             record = AnalysisRecord(
-                user_id=current_user.id,
+                user_id=user_id,
                 filename=fname,
                 file_size_bytes=len(contents),
                 summary=result.summary,
@@ -135,7 +154,7 @@ async def create_analysis_task(
                 guidelines_checked=result.guidelines_checked,
                 processing_time_seconds=result.processing_time_seconds,
                 llm_provider=settings.LLM_PROVIDER.value,
-                llm_model=settings.OLLAMA_MODEL if settings.LLM_PROVIDER.value == "ollama" else settings.OPENAI_MODEL,
+                llm_model=_get_active_llm_model(),
             )
             bg_db.add(record)
             await bg_db.commit()
@@ -144,23 +163,29 @@ async def create_analysis_task(
             await log_audit(
                 db=bg_db,
                 action="analyze_task",
-                user_id=current_user.id,
+                user_id=user_id,
                 resource=fname,
                 details=f"task_completed_score={result.overall_risk_score}",
-                ip_address=request.client.host if request.client else None,
+                ip_address=client_ip,
             )
-            
-            # Convert AnalysisResult to dict + include the newly created DB id
+
             final_data = result.model_dump()
             final_data['analysis_id'] = record.id
-            # Return result and a mock trace for SSE (in reality the agent would yield this)
-            return type("ResultMock", (), {"model_dump": lambda: final_data})(), {"step": "complete"}
+
+        # ResultMock wraps the dict — model_dump must accept 'self' as it's a bound method
+        result_mock = type("ResultMock", (), {"model_dump": lambda self, **kw: final_data})()
+        return result_mock, {"step": "complete"}
 
     # 1. Create task in DB
     task_id = await create_task(db, current_user.id, "analysis")
-    
-    # 2. Fire and forget the background worker
-    asyncio.create_task(run_analysis_task(db, task_id, application_text, filename, wrapped_analysis))
+
+    # 2. Fire and forget — use a fresh session for the background worker
+    from app.models.database import get_session_factory
+    bg_session_factory = get_session_factory()
+    async def _run_with_fresh_session():
+        async with bg_session_factory() as bg_db:
+            await run_analysis_task(bg_db, task_id, application_text, filename, wrapped_analysis)
+    asyncio.create_task(_run_with_fresh_session())
 
     return {"task_id": task_id, "status": "pending"}
 

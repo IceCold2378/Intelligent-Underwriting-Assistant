@@ -15,6 +15,7 @@ class LLMProvider(str, Enum):
     OPENAI = "openai"
     AZURE_OPENAI = "azure_openai"
     ANTHROPIC = "anthropic"
+    OPENROUTER = "openrouter"
 
 
 class Environment(str, Enum):
@@ -67,6 +68,11 @@ class Settings(BaseSettings):
     # --- Anthropic ---
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_MODEL: str = "claude-sonnet-4-20250514"
+
+    # --- OpenRouter ---
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_MODEL: str = "anthropic/claude-sonnet-4-20250514"
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 
     # --- Agent ---
     AGENT_MAX_ITERATIONS: int = 5

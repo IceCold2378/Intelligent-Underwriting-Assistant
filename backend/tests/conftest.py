@@ -29,6 +29,11 @@ async def app():
     # Override settings
     fastapi_app.dependency_overrides[get_settings] = get_test_settings
 
+    # Clear the global engine so it gets recreated with test settings
+    import app.models.database as db_mod
+    db_mod._engine = None
+    db_mod._async_session_factory = None
+
     # Create tables
     settings = get_test_settings()
     engine = get_engine()
@@ -102,7 +107,9 @@ def create_jwt_token():
     
     def _create(user_id: int, email: str, role: str):
         return create_access_token(
-            data={"sub": str(user_id), "email": email, "role": role}
+            user_id=user_id,
+            email=email,
+            role=role
         )
         
     return _create

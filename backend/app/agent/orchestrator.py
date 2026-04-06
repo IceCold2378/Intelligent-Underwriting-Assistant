@@ -39,7 +39,7 @@ def node_extract_facts(state: AgentState) -> dict:
     Node 1: Extract structured facts from the raw document using regex
     pattern matching. This is deterministic pre-processing before LLM.
     """
-    trace = AgentTrace(**state.get("trace", {}))
+    trace = AgentTrace.from_dict(state.get("trace", {}))
     step = trace.add_step("extract_facts")
     step.status = StepStatus.RUNNING
     start = time.time()
@@ -80,7 +80,7 @@ def node_retrieve_context(state: AgentState) -> dict:
     Node 2: Retrieve relevant guidelines from the vector database.
     Uses the document text as the search query.
     """
-    trace = AgentTrace(**state.get("trace", {}))
+    trace = AgentTrace.from_dict(state.get("trace", {}))
     step = trace.add_step("retrieve_context")
     step.status = StepStatus.RUNNING
     start = time.time()
@@ -139,7 +139,7 @@ def node_llm_analyze(state: AgentState) -> dict:
     Node 3: Use the LLM to perform deep analysis of the document
     against the retrieved guidelines. This is the core AI reasoning step.
     """
-    trace = AgentTrace(**state.get("trace", {}))
+    trace = AgentTrace.from_dict(state.get("trace", {}))
     step = trace.add_step("llm_analyze")
     step.status = StepStatus.RUNNING
     start = time.time()
@@ -152,8 +152,8 @@ def node_llm_analyze(state: AgentState) -> dict:
 
         step.input_summary = f"Document ({len(document_text)} chars) + guidelines"
 
-        response = chain.invoke({"input": document_text})
-        raw_answer = response.get("answer", "")
+        # LCEL chain takes the input text directly as a string
+        raw_answer = chain.invoke(document_text)
 
         step.output_summary = f"LLM response: {len(raw_answer)} chars"
         step.tool_calls = [{"tool": "rag_chain.invoke", "response_length": len(raw_answer)}]
@@ -161,9 +161,6 @@ def node_llm_analyze(state: AgentState) -> dict:
         step.duration_ms = (time.time() - start) * 1000
 
         # Try to parse JSON from LLM response
-        llm_risk_flags = []
-        llm_summary = ""
-        llm_detailed = raw_answer
 
         text = raw_answer.strip()
         if text.startswith("```"):
@@ -216,7 +213,7 @@ def node_check_compliance(state: AgentState) -> dict:
     Node 4: Run deterministic compliance checks against extracted facts.
     This produces a structured list of pass/fail results per rule.
     """
-    trace = AgentTrace(**state.get("trace", {}))
+    trace = AgentTrace.from_dict(state.get("trace", {}))
     step = trace.add_step("check_compliance")
     step.status = StepStatus.RUNNING
     start = time.time()
@@ -276,7 +273,7 @@ def node_calculate_risk(state: AgentState) -> dict:
     Node 5: Calculate the final risk score and recommendation
     based on facts, compliance results, and LLM findings.
     """
-    trace = AgentTrace(**state.get("trace", {}))
+    trace = AgentTrace.from_dict(state.get("trace", {}))
     step = trace.add_step("calculate_risk")
     step.status = StepStatus.RUNNING
     start = time.time()
@@ -325,7 +322,7 @@ def node_generate_output(state: AgentState) -> dict:
     Node 6 (Final): Assemble the complete AnalysisResult from all
     previous nodes' output. This is the terminal node.
     """
-    trace = AgentTrace(**state.get("trace", {}))
+    trace = AgentTrace.from_dict(state.get("trace", {}))
     step = trace.add_step("generate_output")
     step.status = StepStatus.RUNNING
     start = time.time()
@@ -484,7 +481,7 @@ async def run_agent_analysis(
     # Run the graph
     try:
         graph = _get_graph()
-        final_state = graph.invoke(initial_state)
+        final_state = await graph.ainvoke(initial_state)
     except Exception as e:
         logger.exception("Agent graph execution failed: %s", e)
         # Return a fallback result

@@ -42,9 +42,8 @@ def require_role(roles: list[str]):
         payload = decode_access_token(credentials.credentials)
         user_role = payload.get("role")
         
-        if user_role not in roles and "admin" not in roles:
-            # Note: if admin is not in the allowed roles, even an admin needs the specific role
-            # Usually admin has all roles, so let's just make "admin" a superuser role.
+        if user_role not in roles:
+            # Allow "admin" role to bypass all specific role requirements as a superuser
             if user_role != "admin":
                 raise AuthorizationError(f"Access requires one of: {roles}")
 
