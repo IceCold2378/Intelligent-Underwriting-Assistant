@@ -290,7 +290,7 @@ async def get_dashboard_metrics(
     total = total_result.scalar() or 0
 
     # Analyses today
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     today_result = await db.execute(
         select(func.count(AnalysisRecord.id)).where(
             AnalysisRecord.user_id == current_user.id,

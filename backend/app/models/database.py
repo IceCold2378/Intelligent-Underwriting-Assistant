@@ -27,8 +27,8 @@ class User(Base):
     organization = Column(String(200), nullable=True)
     role = Column(String(20), default="analyst", nullable=False)
     is_active = Column(Integer, default=1, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     analyses = relationship("AnalysisRecord", back_populates="user", lazy="dynamic")
@@ -56,7 +56,7 @@ class AnalysisRecord(Base):
     # Meta
     llm_provider = Column(String(50), nullable=True)
     llm_model = Column(String(100), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     user = relationship("User", back_populates="analyses")
@@ -71,7 +71,7 @@ class AuditLog(Base):
     resource = Column(String(255), nullable=True)  # e.g., filename
     details = Column(Text, nullable=True)
     ip_address = Column(String(45), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     user = relationship("User", back_populates="audit_logs")
@@ -87,7 +87,7 @@ class ApiKey(Base):
     name = Column(String(100), nullable=False)
     scopes = Column(String(255), default="read,write", nullable=False)  # Comma-separated list
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=True)
     is_active = Column(Integer, default=1, nullable=False)
 
@@ -105,8 +105,8 @@ class BackgroundTask(Base):
     result_json = Column(JSON, nullable=True)
     error = Column(Text, nullable=True)
     agent_trace_json = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User")
 
@@ -122,7 +122,7 @@ class WebhookEndpointModel(Base):
     description = Column(String(255), nullable=True)
     is_active = Column(Integer, default=1, nullable=False)
     failure_count = Column(Integer, default=0)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User")
 

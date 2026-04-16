@@ -51,7 +51,26 @@ async def stream_task_progress(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    # 3. Return the SSE streaming response
+    # 3. Handle tasks that are already finished (prevents SSE hanging)
+    if task.status in ("complete", "failed"):
+        import json
+        async def fast_replay():
+            yield f"event: connected\ndata: {json.dumps({'task_id': task_id})}\n\n"
+            data = {"progress": task.progress}
+            if task.result_json:
+                data["result"] = task.result_json
+            if task.agent_trace_json:
+                data["trace"] = task.agent_trace_json
+            if task.error:
+                data["error"] = task.error
+                yield f"event: error\ndata: {json.dumps(data)}\n\n"
+            else:
+                yield f"event: complete\ndata: {json.dumps(data)}\n\n"
+            yield f"event: done\ndata: {json.dumps({'task_id': task_id})}\n\n"
+        
+        return StreamingResponse(fast_replay(), media_type="text/event-stream")
+
+    # 4. Return the SSE streaming response for active tasks
     return StreamingResponse(
         sse_generator(task_id),
         media_type="text/event-stream"
